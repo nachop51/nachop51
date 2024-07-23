@@ -10,11 +10,11 @@
 
 <div align="center">
 
-&ensp;[<img src="https://img.shields.io/badge/Gmail-D14836?style=for-the-badge&logo=gmail&logoColor=white" />](mailto:nachoperalta0@gmail.com)
+&ensp;[<img src="https://img.shields.io/badge/Gmail-D14836?style=for-the-badge&logo=gmail&logoColor=white" />](mailto:contact@nachop.dev)
 &ensp;[<img src="https://img.shields.io/badge/linkedin-%230077B5.svg?style=for-the-badge&logo=linkedin&logoColor=white" />](https://www.linkedin.com/in/ignacio-peralta-dev/)
-&ensp;[<img src="https://img.shields.io/badge/Twitter-%231DA1F2.svg?style=for-the-badge&logo=Twitter&logoColor=white" />](https://twitter.com/inach0f)
+&ensp;[<img src="https://img.shields.io/badge/Twitter-%231DA1F2.svg?style=for-the-badge&logo=Twitter&logoColor=white" />](https://x.com/ndev51)
 &ensp;[<img src="https://img.shields.io/badge/Instagram-%23E4405F.svg?style=for-the-badge&logo=Instagram&logoColor=white" />](https://www.instagram.com/nachop51/)
-&ensp;[<img src="https://img.shields.io/badge/github-%23121011.svg?style=for-the-badge&logo=github&logoColor=white">](https://github.com/Nachop51/)
+&ensp;[<img src="https://img.shields.io/badge/github-%23121011.svg?style=for-the-badge&logo=github&logoColor=white">](https://github.com/nachop51/)
 
 </div>
 
@@ -58,11 +58,11 @@ How to code xD
 
 <div align="center">
 
-![GitHub Activity Graph](https://github-readme-stats.vercel.app/api?username=Nachop51&show_icons=true&count_private=true&theme=cobalt&text_color=fafafa&hide_border=true&hide=issues,contribs&bg_color=00000000&rank_icon=github&include_all_commits=true)
+![GitHub Activity Graph](https://github-readme-stats.vercel.app/api?username=nachop51&show_icons=true&count_private=true&theme=cobalt&text_color=beace2&hide_border=true&hide=issues,contribs&bg_color=00000000&rank_icon=github&include_all_commits=true)
 
-![Top Langs](https://github-readme-stats.vercel.app/api/top-langs/?username=nachop51&hide=c,html,c%2B%2B&layout=compact&theme=cobalt&text_color=fafafa&hide_border=true&bg_color=00000000)
+![Top Langs](https://github-readme-stats.vercel.app/api/top-langs/?username=nachop51&hide=c,html,c%2B%2B&layout=compact&theme=cobalt&text_color=beace2&hide_border=true&bg_color=00000000)
 
-![Streak Stats](https://github-readme-streak-stats.herokuapp.com/?user=Nachop51&theme=cobalt&text_color=fafafa&hide_border=true&background=00000000)
+![Streak Stats](https://github-readme-streak-stats.herokuapp.com/?user=nachop51&theme=cobalt&text_color=beace2&hide_border=true&background=00000000)
 
 </div>
 
