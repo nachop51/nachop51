@@ -1,4 +1,4 @@
-<h1 align="center">Hi 👋, I'm Ignacio Peralta</h1>
+<h1 align="center">Hi 👋, I'm Ignacio Pankowski</h1>
 <h3 align="center">(0b11101001 ^ 0xff) years old.</h3>
 
 <div align="center">
