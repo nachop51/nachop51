@@ -9,10 +9,30 @@ import (
 )
 
 var (
+	// DeploymentsColumns holds the columns for the "deployments" table.
+	DeploymentsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "ok", Type: field.TypeBool, Default: false},
+		{Name: "error", Type: field.TypeString, Size: 2147483647, Default: ""},
+	}
+	// DeploymentsTable holds the schema information for the "deployments" table.
+	DeploymentsTable = &schema.Table{
+		Name:       "deployments",
+		Columns:    DeploymentsColumns,
+		PrimaryKey: []*schema.Column{DeploymentsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "deployment_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{DeploymentsColumns[1]},
+			},
+		},
+	}
 	// PostsColumns holds the columns for the "posts" table.
 	PostsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
-		{Name: "lang", Type: field.TypeString},
+		{Name: "lang", Type: field.TypeString, Default: "en"},
 		{Name: "slug", Type: field.TypeString},
 		{Name: "old_slugs", Type: field.TypeJSON},
 		{Name: "translation_key", Type: field.TypeString, Nullable: true},
@@ -55,6 +75,7 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		DeploymentsTable,
 		PostsTable,
 	}
 )

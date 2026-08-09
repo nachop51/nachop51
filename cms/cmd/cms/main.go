@@ -2,21 +2,34 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"entgo.io/ent/dialect"
 	"github.com/google/uuid"
+	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
 	_ "github.com/lib/pq"
 	"github.com/nachop51/nachop51/ent"
-	"github.com/nachop51/nachop51/internal/export"
-	"github.com/nachop51/nachop51/internal/publish"
+	"github.com/nachop51/nachop51/internal/deploy"
 	"github.com/nachop51/nachop51/internal/store"
 )
+
+type Json map[string]interface{}
+
+func parseID(c *echo.Context) (uuid.UUID, bool) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, Json{"error": "invalid id"})
+		return uuid.Nil, false
+	}
+	return id, true
+}
 
 func main() {
 	dsn := os.Getenv("DATABASE_URL")
@@ -37,137 +50,140 @@ func main() {
 
 	st := store.New(client)
 
-	mux := http.NewServeMux()
+	e := echo.New()
 
-	mux.HandleFunc("GET /api/posts", func(w http.ResponseWriter, r *http.Request) {
-		posts, err := st.List(r.Context())
+	e.Use(middleware.RequestLogger())
+	e.Use(middleware.Recover())
+
+	e.GET("/api/posts", func(c *echo.Context) error {
+		posts, err := st.List(c.Request().Context())
 		if err != nil {
 			log.Printf("failed listing posts: %v", err)
-			http.Error(w, "something went wrong fetching the posts", http.StatusInternalServerError)
-			return
+			return c.JSON(http.StatusInternalServerError, Json{"error": "something went wrong fetching the posts"})
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(posts)
+		return c.JSON(http.StatusOK, posts)
 	})
 
-	mux.HandleFunc("PUT /api/posts/{id}", func(w http.ResponseWriter, r *http.Request) {
-		log.Print("here")
-		id, err := uuid.Parse(r.PathValue("id"))
-		if err != nil {
-			http.Error(w, "invalid id", http.StatusBadRequest)
-			return
+	e.PUT("/api/posts/:id", func(c *echo.Context) error {
+		id, ok := parseID(c)
+		if !ok {
+			return nil
 		}
 
 		var d store.Draft
-		if err := json.NewDecoder(r.Body).Decode(&d); err != nil {
-			http.Error(w, "invalid request body", http.StatusBadRequest)
-			return
+		if err := c.Bind(&d); err != nil {
+			return c.JSON(http.StatusBadRequest, Json{"error": "invalid request body"})
 		}
 		d.ID = id
 
-		if err := st.Save(r.Context(), d); err != nil {
+		if err := st.Save(c.Request().Context(), d); err != nil {
 			log.Printf("failed saving post: %v", err)
-			http.Error(w, "something went wrong saving the post", http.StatusInternalServerError)
-			return
+			return c.JSON(http.StatusInternalServerError, Json{"error": "something went wrong saving the post"})
 		}
 
-		w.WriteHeader(http.StatusNoContent)
+		return c.NoContent(http.StatusNoContent)
 	})
 
-	mux.HandleFunc("POST /api/posts/{id}/unpublish", func(w http.ResponseWriter, r *http.Request) {
-		id, err := uuid.Parse(r.PathValue("id"))
-		if err != nil {
-			http.Error(w, "invalid id", http.StatusBadRequest)
-			return
+	e.GET("/api/posts/:id", func(c *echo.Context) error {
+		id, ok := parseID(c)
+		if !ok {
+			return nil
 		}
-		if err := st.Unpublish(r.Context(), id); err != nil {
+
+		p, err := st.ByID(c.Request().Context(), id)
+		if ent.IsNotFound(err) {
+			return c.JSON(http.StatusNotFound, Json{"error": "post not found"})
+		}
+		if err != nil {
+			log.Printf("failed fetching post: %v", err)
+			return c.JSON(http.StatusInternalServerError, Json{"error": "something went wrong fetching the post"})
+		}
+
+		return c.JSON(http.StatusOK, p)
+	})
+
+	e.POST("/api/posts/:id/unpublish", func(c *echo.Context) error {
+		id, ok := parseID(c)
+		if !ok {
+			return nil
+		}
+
+		if err := st.Unpublish(c.Request().Context(), id); err != nil {
 			log.Printf("failed unpublishing post: %v", err)
-			http.Error(w, "something went wrong unpublishing the post", http.StatusInternalServerError)
-			return
+			return c.JSON(http.StatusInternalServerError, Json{"error": "something went wrong unpublishing the post"})
 		}
-		w.WriteHeader(http.StatusNoContent)
+
+		return c.NoContent(http.StatusOK)
 	})
 
-	mux.HandleFunc("POST /api/posts/{id}/publish", func(w http.ResponseWriter, r *http.Request) {
-		id, err := uuid.Parse(r.PathValue("id"))
-		if err != nil {
-			http.Error(w, "invalid id", http.StatusBadRequest)
-			return
+	e.POST("/api/posts/:id/publish", func(c *echo.Context) error {
+		id, ok := parseID(c)
+		if !ok {
+			return nil
 		}
 
 		var body struct {
 			At *time.Time `json:"at"`
 		}
-		json.NewDecoder(r.Body).Decode(&body)
+		if err := c.Bind(&body); err != nil {
+			return c.JSON(http.StatusBadRequest, Json{"error": "invalid request body"})
+		}
 
 		at := time.Now()
+
 		if body.At != nil {
 			at = *body.At
 		}
 
-		if err := st.Publish(r.Context(), id, at); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
+		if err := st.Publish(c.Request().Context(), id, at); err != nil {
+			log.Printf("failed publishing post: %v", err)
+			return c.JSON(http.StatusInternalServerError, Json{"error": "something went wrong publishing the post"})
 		}
 
-		w.WriteHeader(http.StatusOK)
+		return c.NoContent(http.StatusOK)
 	})
 
-	mux.HandleFunc("POST /api/export", func(w http.ResponseWriter, r *http.Request) {
-		posts, err := st.ListPublished(r.Context())
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+	dep, err := deploy.New(deploy.Config{
+		SiteDir:    os.Getenv("SITE_DIR"),
+		ContentDir: "src/content/blog",
+		Project:    os.Getenv("CF_PROJECT"),
+		Interval:   5 * time.Minute,
+	}, st)
+
+	if err != nil {
+		log.Fatalf("failed creating deployer: %v", err)
+	}
+
+	e.POST("/api/export", func(c *echo.Context) error {
+		if err := dep.Export(c.Request().Context()); err != nil {
+			if errors.Is(err, deploy.ErrBusy) {
+				return c.JSON(http.StatusConflict, Json{"error": "deploy already running"})
+			}
+			e.Logger.Error("failed exporting posts", "error", err)
+			return c.JSON(http.StatusInternalServerError, Json{"error": "something went wrong exporting the posts"})
 		}
-		if err := export.Run("content", posts); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
+
+		return c.NoContent(http.StatusOK)
 	})
 
-	mux.HandleFunc("POST /api/publish", func(w http.ResponseWriter, r *http.Request) {
-		posts, err := st.ListPublished(r.Context())
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		siteDir := os.Getenv("SITE_DIR")
-		if err := export.Run(filepath.Join(siteDir, "src/content/blog"), posts); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-
-		dep := publish.Deployer{SiteDir: siteDir, Project: os.Getenv("CF_PROJECT")}
-		if err := dep.Deploy(r.Context()); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-
-		w.WriteHeader(http.StatusOK)
+	e.GET("/api/deploy", func(c *echo.Context) error {
+		return c.JSON(http.StatusOK, dep.Status())
 	})
 
-	mux.HandleFunc("GET /api/posts/{id}", func(w http.ResponseWriter, r *http.Request) {
-		id, err := uuid.Parse(r.PathValue("id"))
-		if err != nil {
-			http.Error(w, "invalid id", http.StatusNotFound)
-			return
+	e.POST("/api/deploy", func(c *echo.Context) error {
+		if err := dep.TriggerAsync(); errors.Is(err, deploy.ErrBusy) {
+			return c.JSON(http.StatusConflict, Json{"error": "deploy already running"})
 		}
-		p, err := st.ByID(r.Context(), id)
-		if ent.IsNotFound(err) {
-			http.Error(w, "post not found", http.StatusNotFound)
-			return
-		}
-
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(p)
+		return c.JSON(http.StatusAccepted, dep.Status())
 	})
 
-	log.Println("running on localhost:1234")
-	log.Fatal(http.ListenAndServe(":1234", mux))
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	go dep.Run(ctx)
+
+	sc := echo.StartConfig{Address: ":1234", GracefulTimeout: 10 * time.Second}
+	if err := sc.Start(ctx, e); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Fatalf("failed to start server: %v", err)
+	}
 }

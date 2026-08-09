@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/nachop51/nachop51/ent/deployment"
 	"github.com/nachop51/nachop51/ent/post"
 	"github.com/nachop51/nachop51/ent/schema"
 )
@@ -14,8 +15,30 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	deploymentFields := schema.Deployment{}.Fields()
+	_ = deploymentFields
+	// deploymentDescCreatedAt is the schema descriptor for created_at field.
+	deploymentDescCreatedAt := deploymentFields[1].Descriptor()
+	// deployment.DefaultCreatedAt holds the default value on creation for the created_at field.
+	deployment.DefaultCreatedAt = deploymentDescCreatedAt.Default.(func() time.Time)
+	// deploymentDescOk is the schema descriptor for ok field.
+	deploymentDescOk := deploymentFields[2].Descriptor()
+	// deployment.DefaultOk holds the default value on creation for the ok field.
+	deployment.DefaultOk = deploymentDescOk.Default.(bool)
+	// deploymentDescError is the schema descriptor for error field.
+	deploymentDescError := deploymentFields[3].Descriptor()
+	// deployment.DefaultError holds the default value on creation for the error field.
+	deployment.DefaultError = deploymentDescError.Default.(string)
+	// deploymentDescID is the schema descriptor for id field.
+	deploymentDescID := deploymentFields[0].Descriptor()
+	// deployment.DefaultID holds the default value on creation for the id field.
+	deployment.DefaultID = deploymentDescID.Default.(func() uuid.UUID)
 	postFields := schema.Post{}.Fields()
 	_ = postFields
+	// postDescLang is the schema descriptor for lang field.
+	postDescLang := postFields[1].Descriptor()
+	// post.DefaultLang holds the default value on creation for the lang field.
+	post.DefaultLang = postDescLang.Default.(string)
 	// postDescOldSlugs is the schema descriptor for old_slugs field.
 	postDescOldSlugs := postFields[3].Descriptor()
 	// post.DefaultOldSlugs holds the default value on creation for the old_slugs field.

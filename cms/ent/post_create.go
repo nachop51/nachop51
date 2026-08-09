@@ -31,6 +31,14 @@ func (_c *PostCreate) SetLang(v string) *PostCreate {
 	return _c
 }
 
+// SetNillableLang sets the "lang" field if the given value is not nil.
+func (_c *PostCreate) SetNillableLang(v *string) *PostCreate {
+	if v != nil {
+		_c.SetLang(*v)
+	}
+	return _c
+}
+
 // SetSlug sets the "slug" field.
 func (_c *PostCreate) SetSlug(v string) *PostCreate {
 	_c.mutation.SetSlug(v)
@@ -230,6 +238,10 @@ func (_c *PostCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *PostCreate) defaults() {
+	if _, ok := _c.mutation.Lang(); !ok {
+		v := post.DefaultLang
+		_c.mutation.SetLang(v)
+	}
 	if _, ok := _c.mutation.OldSlugs(); !ok {
 		v := post.DefaultOldSlugs
 		_c.mutation.SetOldSlugs(v)

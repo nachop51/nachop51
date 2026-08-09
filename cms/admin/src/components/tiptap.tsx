@@ -20,13 +20,13 @@ export default function TipTap({ initial, onChange }: Props) {
     content: initial,
     contentType: 'markdown',
     onUpdate: ({ editor }) => {
-      onChange(editor.markdown.serialize(editor.getJSON()))
+      onChange(editor.markdown?.serialize(editor.getJSON()) || '')
     },
   })
 
   return (
     <>
-      <EditorContent editor={editor} />
+      <EditorContent className="border border-red-500" editor={editor} />
       <FloatingMenu editor={editor}>This is the floating menu</FloatingMenu>
       <BubbleMenu editor={editor}>This is the bubble menu</BubbleMenu>
     </>

@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nachop51/nachop51/ent"
+	"github.com/nachop51/nachop51/ent/deployment"
 	"github.com/nachop51/nachop51/ent/post"
 	"github.com/nachop51/nachop51/internal/model"
 )
@@ -89,4 +90,39 @@ func (s *Store) ListPublished(ctx context.Context) ([]*ent.Post, error) {
 		Where(post.PublishedAtNotNil(), post.PublishedAtLTE(time.Now())).
 		Order(ent.Desc(post.FieldPublishedAt)).
 		All(ctx)
+}
+
+func (s *Store) HasPendingSince(ctx context.Context, since time.Time) (bool, error) {
+	return s.c.Post.Query().
+		Where(
+			post.PublishedAtNotNil(),
+			post.PublishedAtLTE(time.Now()),
+			post.PublishedAtGT(since),
+		).
+		Exist(ctx)
+}
+
+func (s *Store) LastDeploy(ctx context.Context) (time.Time, error) {
+	d, err := s.c.Deployment.Query().
+		Where(deployment.Ok(true)).
+		Order(ent.Desc(deployment.FieldCreatedAt)).
+		First(ctx)
+
+	if ent.IsNotFound(err) {
+		return time.Time{}, nil
+	}
+
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return d.CreatedAt, nil
+}
+
+func (s *Store) RecordDeploy(ctx context.Context, at time.Time, deployErr error) error {
+	c := s.c.Deployment.Create().SetCreatedAt(at).SetOk(deployErr == nil)
+	if deployErr != nil {
+		c.SetError(deployErr.Error())
+	}
+	return c.Exec(ctx)
 }

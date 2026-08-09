@@ -76,6 +76,8 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// DefaultLang holds the default value on creation for the "lang" field.
+	DefaultLang string
 	// DefaultOldSlugs holds the default value on creation for the "old_slugs" field.
 	DefaultOldSlugs []string
 	// DefaultTitle holds the default value on creation for the "title" field.
