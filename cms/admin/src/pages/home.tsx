@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from 'wouter'
+import { navigate } from 'wouter/use-browser-location'
 
 type Post = {
   id: string
@@ -10,17 +11,39 @@ type Post = {
 }
 
 export default function HomePage() {
-  const [posts, setPosts] = useState<Post[]>([])
-  const [error, setError] = useState<string | null>(null)
+  const {
+    data: posts,
+    isLoading,
+    isSuccess,
+    error,
+  } = useQuery<Post[]>({
+    queryKey: ['posts'],
+    queryFn: async () => {
+      const res = await fetch('/api/posts')
+      if (!res.ok) throw new Error('Error fetching posts')
+      return res.json()
+    },
+  })
 
-  useEffect(() => {
-    fetch('/api/posts')
-      .then((r) => r.json())
-      .then(setPosts)
-      .catch((err) => setError(err.message))
-  }, [])
+  if (isLoading) return <div>Loading...</div>
+  if (!isSuccess || error) return <div>Error: {error!.message}</div>
 
-  if (error) return <p>Error: {error}</p>
+  const handleNewPost = async () => {
+    const uuid = crypto.randomUUID()
+    const res = await fetch(`/api/posts/${uuid}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        lang: 'en',
+        slug: 'brand-new',
+        title: 'New post',
+        content: 'hello',
+        published_at: null,
+      }),
+    })
+    if (!res.ok) throw new Error('Error creating post')
+    navigate(`/posts/${uuid}`)
+  }
 
   return (
     <div>
@@ -38,10 +61,7 @@ export default function HomePage() {
           </li>
         ))}
       </ul>
-
-      {/*<div className="card">
-      <TipTap initial="# Hello!" onChange={setMd} />
-    </div>*/}
+      <button onClick={handleNewPost}>New post</button>
     </div>
   )
 }

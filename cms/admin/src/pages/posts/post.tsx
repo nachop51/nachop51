@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import TipTap from '../../components/tiptap'
 import useDebounce from '../../hooks/useDebounce'
 import { navigate } from 'wouter/use-browser-location'
@@ -21,79 +22,106 @@ type Post = {
 }
 
 export default function PostPage({ id }: Props) {
-  const [post, setPost] = useState<Post | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const initialized = useRef(false)
-  const debouncedPost = useDebounce(post, 500)
+  const queryClient = useQueryClient()
+  const postQueryKey = ['post', id]
+  const {
+    data: post,
+    isLoading: loading,
+    error,
+  } = useQuery<Post>({
+    queryKey: postQueryKey,
+    queryFn: async () => {
+      const response = await fetch(`/api/posts/${id}`)
 
-  useEffect(() => {
-    setLoading(true)
-    fetch(`/api/posts/${id}`)
-      .then((r) => {
-        if (r.status === 404) {
-          return navigate('/post/not-found')
-        }
-
-        return r.json()
-      })
-      .then((post) => {
-        setTimeout(() => (initialized.current = true), 1000)
-        setPost(post)
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false))
-  }, [id])
-
-  useEffect(() => {
-    if (error || !debouncedPost || !initialized.current) return
-
-    fetch(`/api/posts/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        id: debouncedPost.id,
-        lang: debouncedPost.lang,
-        slug: debouncedPost.slug,
-        title: debouncedPost.title,
-        content: debouncedPost.content,
-        description: debouncedPost.description,
-      }),
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error('Failed to update post')
-        toast.success('Saved')
-      })
-      .catch((err) => setError(err.message))
-  }, [debouncedPost, id, error])
-
-  if (loading) return <p>Loading...</p>
-  if (!post) return <p>Post not found</p>
-
-  async function handlePublish() {
-    const mode = post?.published_at ? 'unpublish' : 'publish'
-    try {
-      const url = mode === 'unpublish' ? `/api/posts/${id}/unpublish` : `/api/posts/${id}/publish`
-      const res = await fetch(url, {
-        method: 'POST',
-      })
-      toast.error(await res.text())
-      if (res.status >= 400) {
-        return
+      if (response.status === 404) {
+        navigate('/post/not-found')
+        throw new Error('Post not found')
       }
 
-      setPost((prevPost) => {
-        if (!prevPost) return prevPost
-        return {
-          ...prevPost,
-          published_at: mode === 'publish' ? new Date().toISOString() : null,
-        }
+      if (!response.ok) throw new Error('Failed to fetch post')
+      return response.json()
+    },
+  })
+  const savedPost = useRef<Post | null>(null)
+  const debouncedPost = useDebounce(post, 500)
+
+  const updatePost = (updater: (post: Post) => Post) => {
+    queryClient.setQueryData<Post>(postQueryKey, (currentPost) =>
+      currentPost ? updater(currentPost) : currentPost
+    )
+  }
+
+  const { mutate: savePost } = useMutation({
+    mutationFn: async (post: Post) => {
+      const response = await fetch(`/api/posts/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: post.id,
+          lang: post.lang,
+          slug: post.slug,
+          title: post.title,
+          content: post.content,
+          description: post.description,
+        }),
       })
-    } catch (err: any) {
-      setError(err.message)
+
+      if (!response.ok) throw new Error('Failed to update post')
+    },
+    onSuccess: (_, post) => {
+      savedPost.current = post
+      toast.success('Saved')
+    },
+    onError: (saveError) => toast.error(saveError.message),
+  })
+
+  useEffect(() => {
+    if (post && savedPost.current?.id !== post.id) {
+      savedPost.current = post
     }
+  }, [post])
+
+  useEffect(() => {
+    if (error || !debouncedPost || !savedPost.current) return
+
+    const hasChanges =
+      debouncedPost.lang !== savedPost.current.lang ||
+      debouncedPost.slug !== savedPost.current.slug ||
+      debouncedPost.title !== savedPost.current.title ||
+      debouncedPost.content !== savedPost.current.content ||
+      debouncedPost.description !== savedPost.current.description
+
+    if (hasChanges) savePost(debouncedPost)
+  }, [debouncedPost, error, savePost])
+
+  const { mutate: publishPost } = useMutation({
+    mutationFn: async (mode: 'publish' | 'unpublish') => {
+      const url = mode === 'unpublish' ? `/api/posts/${id}/unpublish` : `/api/posts/${id}/publish`
+      const response = await fetch(url, { method: 'POST' })
+      const message = await response.text()
+
+      if (!response.ok) throw new Error(message || 'Failed to update post status')
+      return { mode, message }
+    },
+    onSuccess: ({ mode, message }) => {
+      toast.error(message)
+      updatePost((currentPost) => ({
+        ...currentPost,
+        published_at: mode === 'publish' ? new Date().toISOString() : null,
+      }))
+    },
+    onError: (publishError) => toast.error(publishError.message),
+  })
+
+  if (loading) return <p>Loading...</p>
+  if (error) return <p>Error: {error.message}</p>
+  if (!post) return <p>Post not found</p>
+
+  function handlePublish() {
+    if (!post) return
+    publishPost(post.published_at ? 'unpublish' : 'publish')
   }
 
   return (
@@ -112,13 +140,10 @@ export default function PostPage({ id }: Props) {
           type="text"
           value={post.description}
           onChange={(e) =>
-            setPost((p) => {
-              if (!p) return null
-              return {
-                ...p,
-                description: e.target.value,
-              }
-            })
+            updatePost((currentPost) => ({
+              ...currentPost,
+              description: e.target.value,
+            }))
           }
         />
       </div>
@@ -128,14 +153,10 @@ export default function PostPage({ id }: Props) {
         <TipTap
           initial={post.content || ''}
           onChange={(md) => {
-            setPost((prevPost) => {
-              if (!prevPost) return null
-
-              return {
-                ...prevPost,
-                content: md,
-              }
-            })
+            updatePost((currentPost) => ({
+              ...currentPost,
+              content: md,
+            }))
           }}
         />
       </div>

@@ -21,7 +21,6 @@ var ErrBusy = errors.New("deploy: already running")
 type Config struct {
 	SiteDir    string // astro project location
 	ContentDir string // relative to site, where is the content directory
-	Project    string // CF_PROJECT
 }
 
 type Result struct {
@@ -53,9 +52,6 @@ func New(cfg Config, st *store.Store) (*Deployer, error) {
 	}
 	if cfg.SiteDir == "" {
 		return nil, errors.New("deploy: site directory is empty (SITE_DIR)")
-	}
-	if cfg.Project == "" {
-		return nil, errors.New("deploy: cloudflare project name is empty (CF_PROJECT)")
 	}
 
 	if cfg.ContentDir == "" {
@@ -154,13 +150,7 @@ func (d *Deployer) deploy(ctx context.Context) error {
 		return fmt.Errorf("deploy: exporting content: %w", err)
 	}
 
-	err = d.execute(ctx, "bun", "run", "build")
-
-	if err != nil {
-		return err
-	}
-
-	err = d.execute(ctx, "bunx", "wrangler", "pages", "deploy", "--project-name", d.cfg.Project, "--branch", "main")
+	err = d.execute(ctx, "bunx", "void", "deploy", "--project", "nachop51")
 
 	if err != nil {
 		return err

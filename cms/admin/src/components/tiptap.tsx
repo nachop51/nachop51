@@ -1,5 +1,6 @@
 import { Markdown } from '@tiptap/markdown'
 import { EditorContent, useEditor } from '@tiptap/react'
+import Image from '@tiptap/extension-image'
 import { BubbleMenu, FloatingMenu } from '@tiptap/react/menus'
 import StarterKit from '@tiptap/starter-kit'
 
@@ -12,6 +13,7 @@ export default function TipTap({ initial, onChange }: Props) {
   const editor = useEditor({
     extensions: [
       StarterKit,
+      Image,
       Markdown.configure({
         markedOptions: { gfm: true, breaks: false },
         indentation: { style: 'space', size: 2 },

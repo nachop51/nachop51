@@ -20,6 +20,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/nachop51/nachop51/ent"
 	"github.com/nachop51/nachop51/internal/deploy"
+	"github.com/nachop51/nachop51/internal/export"
 	"github.com/nachop51/nachop51/internal/store"
 	"github.com/nachop51/nachop51/internal/web"
 )
@@ -59,6 +60,7 @@ func main() {
 
 	e := echo.New()
 
+	e.Pre(middleware.RemoveTrailingSlash())
 	e.Use(middleware.RequestLogger())
 	e.Use(middleware.Recover())
 
@@ -158,7 +160,6 @@ func main() {
 	dep, err := deploy.New(deploy.Config{
 		SiteDir:    os.Getenv("SITE_DIR"),
 		ContentDir: "src/content/blog",
-		Project:    os.Getenv("CF_PROJECT"),
 	}, st)
 
 	if err != nil {
@@ -184,6 +185,20 @@ func main() {
 	}
 	handler := http.FileServer(http.FS(sub))
 
+	e.GET("/api/export", func(c *echo.Context) error {
+		posts, err := st.ListPublished(c.Request().Context())
+		if err != nil {
+			log.Printf("failed listing published posts: %v", err)
+			return c.JSON(http.StatusInternalServerError, Json{"error": "something went wrong fetching the published posts"})
+		}
+		export.Run("../site/src/content/blog", posts)
+		return c.JSON(http.StatusOK, Json{"message": "Export endpoint"})
+	})
+
+	e.Any("/api/*", func(c *echo.Context) error {
+		return c.JSON(http.StatusNotFound, Json{"error": "not found"})
+	})
+
 	e.GET("/*", func(c *echo.Context) error {
 		path := strings.TrimPrefix(c.Request().URL.Path, "/")
 		fmt.Printf("path: %s\n\n", path)
@@ -194,9 +209,9 @@ func main() {
 		return nil
 	})
 
-	sch := deploy.NewScheduler(dep, 10*time.Minute)
+	// sch := deploy.NewScheduler(dep, 10*time.Minute)
 
-	go sch.Run(ctx)
+	// go sch.Run(ctx)
 
 	sc := echo.StartConfig{Address: ":1234", GracefulTimeout: 10 * time.Second}
 	if err := sc.Start(ctx, e); err != nil && !errors.Is(err, http.ErrServerClosed) {
