@@ -6,20 +6,22 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/nachop51/nachop51/internal/export"
 	"github.com/nachop51/nachop51/internal/store"
 )
 
-var ErrBusy = errors.New("deploy already running")
+var ErrBusy = errors.New("deploy: already running")
 
 type Config struct {
-	SiteDir    string        // Astro site root
-	ContentDir string        // content collection, relative to SiteDir
-	Project    string        // Cloudflare Pages project name
-	Interval   time.Duration // how often the scheduler checks for pending posts
+	SiteDir    string // astro project location
+	ContentDir string // relative to site, where is the content directory
+	Project    string // CF_PROJECT
 }
 
 type Result struct {
@@ -39,27 +41,25 @@ type Deployer struct {
 	cfg   Config
 	store *store.Store
 
-	mu        sync.Mutex
-	running   bool
-	startedAt time.Time
-	last      *Result
+	mu         sync.Mutex
+	running    bool
+	startedAt  time.Time
+	lastResult *Result
 }
 
 func New(cfg Config, st *store.Store) (*Deployer, error) {
 	if st == nil {
-		return nil, errors.New("deploy: store is required")
+		return nil, errors.New("deploy: store is nil")
 	}
 	if cfg.SiteDir == "" {
-		return nil, errors.New("deploy: SiteDir is required (set SITE_DIR)")
-	}
-	if cfg.ContentDir == "" {
-		return nil, errors.New("deploy: ContentDir is required")
+		return nil, errors.New("deploy: site directory is empty (SITE_DIR)")
 	}
 	if cfg.Project == "" {
-		return nil, errors.New("deploy: Project is required (set CF_PROJECT)")
+		return nil, errors.New("deploy: cloudflare project name is empty (CF_PROJECT)")
 	}
-	if cfg.Interval <= 0 {
-		cfg.Interval = 5 * time.Minute
+
+	if cfg.ContentDir == "" {
+		return nil, errors.New("deploy: content directory is empty")
 	}
 
 	abs, err := filepath.Abs(cfg.SiteDir)
@@ -73,6 +73,14 @@ func New(cfg Config, st *store.Store) (*Deployer, error) {
 	}
 	cfg.SiteDir = abs
 
+	contentAbs := filepath.Join(abs, cfg.ContentDir)
+
+	if !strings.Contains(contentAbs, cfg.SiteDir) || strings.Contains(contentAbs, "..") {
+		return nil, fmt.Errorf("deploy: content directory %s is not inside site directory %s", contentAbs, cfg.SiteDir)
+	}
+
+	cfg.ContentDir = contentAbs
+
 	return &Deployer{cfg: cfg, store: st}, nil
 }
 
@@ -80,112 +88,106 @@ func (d *Deployer) Status() Status {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	s := Status{Running: d.running, Last: d.last}
+	status := Status{Running: d.running, Last: d.lastResult}
 	if d.running {
 		started := d.startedAt
-		s.Since = &started
+		status.Since = &started
 	}
-	return s
+
+	return status
 }
 
-func (d *Deployer) Trigger(ctx context.Context) error {
-	started, err := d.claim()
-	if err != nil {
-		return err
+func (d *Deployer) acquire() bool {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.running {
+		return false
 	}
-	return d.run(ctx, started)
+
+	d.running = true
+	d.startedAt = time.Now()
+	d.lastResult = nil
+
+	return true
 }
 
-func (d *Deployer) TriggerAsync() error {
-	started, err := d.claim()
+func (d *Deployer) release(err error) *Result {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	d.running = false
+
+	r := &Result{OK: err == nil, At: d.startedAt, Duration: time.Since(d.startedAt)}
+
 	if err != nil {
-		return err
+		r.Error = err.Error()
 	}
-	go func() {
-		if err := d.run(context.Background(), started); err != nil {
-			log.Printf("deploy: %v", err)
-		}
-	}()
+
+	d.lastResult = r
+	return r
+}
+
+func (d *Deployer) execute(ctx context.Context, name string, args ...string) error {
+	cmd := exec.CommandContext(ctx, name, args...)
+
+	cmd.Dir = d.cfg.SiteDir
+
+	out, err := cmd.CombinedOutput()
+
+	if err != nil {
+		return fmt.Errorf("deploy: executing '%s %v': %w\n%s", name, strings.Join(args, " "), err, string(out))
+	}
+
 	return nil
 }
 
-func (d *Deployer) Export(ctx context.Context) error {
-	if _, err := d.claim(); err != nil {
+func (d *Deployer) deploy(ctx context.Context) error {
+	posts, err := d.store.ListPublished(ctx)
+	if err != nil {
+		return fmt.Errorf("deploy: listing published posts: %w", err)
+	}
+
+	err = export.Run(d.cfg.ContentDir, posts)
+
+	if err != nil {
+		return fmt.Errorf("deploy: exporting content: %w", err)
+	}
+
+	err = d.execute(ctx, "bun", "run", "build")
+
+	if err != nil {
 		return err
 	}
-	defer d.unclaim()
 
-	return d.export(ctx)
+	err = d.execute(ctx, "bunx", "wrangler", "pages", "deploy", "--project-name", d.cfg.Project, "--branch", "main")
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (d *Deployer) Run(ctx context.Context) {
-	t := time.NewTicker(d.cfg.Interval)
-	defer t.Stop()
+// run executes the whole deploy process, including acquiring the lock, deploying, releasing the lock and recording the result in the store.
+// then returns the error of the deploy process, if any. If the deployer is already running, it returns ErrBusy.
+func (d *Deployer) Run(ctx context.Context) error {
+	if !d.acquire() {
+		return ErrBusy
+	}
 
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-t.C:
-			if err := d.tick(ctx); err != nil && !errors.Is(err, ErrBusy) {
-				log.Printf("deploy: scheduled run failed: %v", err)
-			}
+	go func() {
+		depErr := d.deploy(ctx)
+		r := d.release(depErr)
+
+		if depErr != nil {
+			log.Printf("deploy: %v", depErr)
 		}
-	}
-}
 
-func (d *Deployer) tick(ctx context.Context) error {
-	last, err := d.store.LastDeploy(ctx)
-	if err != nil {
-		return fmt.Errorf("reading last deploy: %w", err)
-	}
+		if err := d.store.RecordDeploy(ctx, r.At, depErr); err != nil {
+			log.Printf("deploy: recording deploy: %v", err)
+		}
+	}()
 
-	pending, err := d.store.HasPendingSince(ctx, last)
-	if err != nil {
-		return fmt.Errorf("checking for pending posts: %w", err)
-	}
-	if !pending {
-		return nil
-	}
-
-	log.Printf("deploy: posts published since %s, deploying", last.Format(time.RFC3339))
-	return d.Trigger(ctx)
-}
-
-func (d *Deployer) run(ctx context.Context, started time.Time) error {
-	err := d.pipeline(ctx)
-	d.finish(started, err)
-
-	if recErr := d.store.RecordDeploy(context.WithoutCancel(ctx), started, err); recErr != nil {
-		log.Printf("deploy: failed recording deployment: %v", recErr)
-	}
-	return err
-}
-
-func (d *Deployer) claim() (time.Time, error) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
-	if d.running {
-		return time.Time{}, ErrBusy
-	}
-	d.running, d.startedAt = true, time.Now()
-	return d.startedAt, nil
-}
-
-func (d *Deployer) unclaim() {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	d.running = false
-}
-
-func (d *Deployer) finish(started time.Time, err error) {
-	res := &Result{OK: err == nil, At: started, Duration: time.Since(started)}
-	if err != nil {
-		res.Error = err.Error()
-	}
-
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	d.running, d.last = false, res
+	return nil
 }

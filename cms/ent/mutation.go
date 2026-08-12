@@ -492,6 +492,7 @@ type PostMutation struct {
 	published_at       *time.Time
 	created_at         *time.Time
 	updated_at         *time.Time
+	state_changed_at   *time.Time
 	published_snapshot **model.Snapshot
 	clearedFields      map[string]struct{}
 	done               bool
@@ -1153,6 +1154,55 @@ func (m *PostMutation) ResetUpdatedAt() {
 	m.updated_at = nil
 }
 
+// SetStateChangedAt sets the "state_changed_at" field.
+func (m *PostMutation) SetStateChangedAt(t time.Time) {
+	m.state_changed_at = &t
+}
+
+// StateChangedAt returns the value of the "state_changed_at" field in the mutation.
+func (m *PostMutation) StateChangedAt() (r time.Time, exists bool) {
+	v := m.state_changed_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStateChangedAt returns the old "state_changed_at" field's value of the Post entity.
+// If the Post object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PostMutation) OldStateChangedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStateChangedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStateChangedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStateChangedAt: %w", err)
+	}
+	return oldValue.StateChangedAt, nil
+}
+
+// ClearStateChangedAt clears the value of the "state_changed_at" field.
+func (m *PostMutation) ClearStateChangedAt() {
+	m.state_changed_at = nil
+	m.clearedFields[post.FieldStateChangedAt] = struct{}{}
+}
+
+// StateChangedAtCleared returns if the "state_changed_at" field was cleared in this mutation.
+func (m *PostMutation) StateChangedAtCleared() bool {
+	_, ok := m.clearedFields[post.FieldStateChangedAt]
+	return ok
+}
+
+// ResetStateChangedAt resets all changes to the "state_changed_at" field.
+func (m *PostMutation) ResetStateChangedAt() {
+	m.state_changed_at = nil
+	delete(m.clearedFields, post.FieldStateChangedAt)
+}
+
 // SetPublishedSnapshot sets the "published_snapshot" field.
 func (m *PostMutation) SetPublishedSnapshot(value *model.Snapshot) {
 	m.published_snapshot = &value
@@ -1236,7 +1286,7 @@ func (m *PostMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *PostMutation) Fields() []string {
-	fields := make([]string, 0, 14)
+	fields := make([]string, 0, 15)
 	if m.lang != nil {
 		fields = append(fields, post.FieldLang)
 	}
@@ -1276,6 +1326,9 @@ func (m *PostMutation) Fields() []string {
 	if m.updated_at != nil {
 		fields = append(fields, post.FieldUpdatedAt)
 	}
+	if m.state_changed_at != nil {
+		fields = append(fields, post.FieldStateChangedAt)
+	}
 	if m.published_snapshot != nil {
 		fields = append(fields, post.FieldPublishedSnapshot)
 	}
@@ -1313,6 +1366,8 @@ func (m *PostMutation) Field(name string) (ent.Value, bool) {
 		return m.CreatedAt()
 	case post.FieldUpdatedAt:
 		return m.UpdatedAt()
+	case post.FieldStateChangedAt:
+		return m.StateChangedAt()
 	case post.FieldPublishedSnapshot:
 		return m.PublishedSnapshot()
 	}
@@ -1350,6 +1405,8 @@ func (m *PostMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldCreatedAt(ctx)
 	case post.FieldUpdatedAt:
 		return m.OldUpdatedAt(ctx)
+	case post.FieldStateChangedAt:
+		return m.OldStateChangedAt(ctx)
 	case post.FieldPublishedSnapshot:
 		return m.OldPublishedSnapshot(ctx)
 	}
@@ -1452,6 +1509,13 @@ func (m *PostMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetUpdatedAt(v)
 		return nil
+	case post.FieldStateChangedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStateChangedAt(v)
+		return nil
 	case post.FieldPublishedSnapshot:
 		v, ok := value.(*model.Snapshot)
 		if !ok {
@@ -1501,6 +1565,9 @@ func (m *PostMutation) ClearedFields() []string {
 	if m.FieldCleared(post.FieldPublishedAt) {
 		fields = append(fields, post.FieldPublishedAt)
 	}
+	if m.FieldCleared(post.FieldStateChangedAt) {
+		fields = append(fields, post.FieldStateChangedAt)
+	}
 	if m.FieldCleared(post.FieldPublishedSnapshot) {
 		fields = append(fields, post.FieldPublishedSnapshot)
 	}
@@ -1529,6 +1596,9 @@ func (m *PostMutation) ClearField(name string) error {
 		return nil
 	case post.FieldPublishedAt:
 		m.ClearPublishedAt()
+		return nil
+	case post.FieldStateChangedAt:
+		m.ClearStateChangedAt()
 		return nil
 	case post.FieldPublishedSnapshot:
 		m.ClearPublishedSnapshot()
@@ -1579,6 +1649,9 @@ func (m *PostMutation) ResetField(name string) error {
 		return nil
 	case post.FieldUpdatedAt:
 		m.ResetUpdatedAt()
+		return nil
+	case post.FieldStateChangedAt:
+		m.ResetStateChangedAt()
 		return nil
 	case post.FieldPublishedSnapshot:
 		m.ResetPublishedSnapshot()

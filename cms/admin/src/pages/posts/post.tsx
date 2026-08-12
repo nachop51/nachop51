@@ -22,11 +22,13 @@ type Post = {
 
 export default function PostPage({ id }: Props) {
   const [post, setPost] = useState<Post | null>(null)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const initialized = useRef(false)
   const debouncedPost = useDebounce(post, 500)
 
   useEffect(() => {
+    setLoading(true)
     fetch(`/api/posts/${id}`)
       .then((r) => {
         if (r.status === 404) {
@@ -40,6 +42,7 @@ export default function PostPage({ id }: Props) {
         setPost(post)
       })
       .catch((err) => setError(err.message))
+      .finally(() => setLoading(false))
   }, [id])
 
   useEffect(() => {
@@ -66,6 +69,7 @@ export default function PostPage({ id }: Props) {
       .catch((err) => setError(err.message))
   }, [debouncedPost, id, error])
 
+  if (loading) return <p>Loading...</p>
   if (!post) return <p>Post not found</p>
 
   async function handlePublish() {

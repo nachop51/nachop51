@@ -46,6 +46,8 @@ type Post struct {
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	// StateChangedAt holds the value of the "state_changed_at" field.
+	StateChangedAt *time.Time `json:"state_changed_at,omitempty"`
 	// PublishedSnapshot holds the value of the "published_snapshot" field.
 	PublishedSnapshot *model.Snapshot `json:"published_snapshot,omitempty"`
 	selectValues      sql.SelectValues
@@ -60,7 +62,7 @@ func (*Post) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case post.FieldLang, post.FieldSlug, post.FieldTranslationKey, post.FieldTitle, post.FieldDescription, post.FieldContent, post.FieldCoverURL, post.FieldCoverAlt:
 			values[i] = new(sql.NullString)
-		case post.FieldPublishedAt, post.FieldCreatedAt, post.FieldUpdatedAt:
+		case post.FieldPublishedAt, post.FieldCreatedAt, post.FieldUpdatedAt, post.FieldStateChangedAt:
 			values[i] = new(sql.NullTime)
 		case post.FieldID:
 			values[i] = new(uuid.UUID)
@@ -171,6 +173,13 @@ func (_m *Post) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.UpdatedAt = value.Time
 			}
+		case post.FieldStateChangedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field state_changed_at", values[i])
+			} else if value.Valid {
+				_m.StateChangedAt = new(time.Time)
+				*_m.StateChangedAt = value.Time
+			}
 		case post.FieldPublishedSnapshot:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field published_snapshot", values[i])
@@ -261,6 +270,11 @@ func (_m *Post) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
 	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	if v := _m.StateChangedAt; v != nil {
+		builder.WriteString("state_changed_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteString(", ")
 	builder.WriteString("published_snapshot=")
 	builder.WriteString(fmt.Sprintf("%v", _m.PublishedSnapshot))

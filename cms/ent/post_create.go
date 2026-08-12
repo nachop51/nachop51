@@ -183,6 +183,20 @@ func (_c *PostCreate) SetNillableUpdatedAt(v *time.Time) *PostCreate {
 	return _c
 }
 
+// SetStateChangedAt sets the "state_changed_at" field.
+func (_c *PostCreate) SetStateChangedAt(v time.Time) *PostCreate {
+	_c.mutation.SetStateChangedAt(v)
+	return _c
+}
+
+// SetNillableStateChangedAt sets the "state_changed_at" field if the given value is not nil.
+func (_c *PostCreate) SetNillableStateChangedAt(v *time.Time) *PostCreate {
+	if v != nil {
+		_c.SetStateChangedAt(*v)
+	}
+	return _c
+}
+
 // SetPublishedSnapshot sets the "published_snapshot" field.
 func (_c *PostCreate) SetPublishedSnapshot(v *model.Snapshot) *PostCreate {
 	_c.mutation.SetPublishedSnapshot(v)
@@ -393,6 +407,10 @@ func (_c *PostCreate) createSpec() (*Post, *sqlgraph.CreateSpec) {
 		_spec.SetField(post.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
 	}
+	if value, ok := _c.mutation.StateChangedAt(); ok {
+		_spec.SetField(post.FieldStateChangedAt, field.TypeTime, value)
+		_node.StateChangedAt = &value
+	}
 	if value, ok := _c.mutation.PublishedSnapshot(); ok {
 		_spec.SetField(post.FieldPublishedSnapshot, field.TypeJSON, value)
 		_node.PublishedSnapshot = value
@@ -602,6 +620,24 @@ func (u *PostUpsert) SetUpdatedAt(v time.Time) *PostUpsert {
 // UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
 func (u *PostUpsert) UpdateUpdatedAt() *PostUpsert {
 	u.SetExcluded(post.FieldUpdatedAt)
+	return u
+}
+
+// SetStateChangedAt sets the "state_changed_at" field.
+func (u *PostUpsert) SetStateChangedAt(v time.Time) *PostUpsert {
+	u.Set(post.FieldStateChangedAt, v)
+	return u
+}
+
+// UpdateStateChangedAt sets the "state_changed_at" field to the value that was provided on create.
+func (u *PostUpsert) UpdateStateChangedAt() *PostUpsert {
+	u.SetExcluded(post.FieldStateChangedAt)
+	return u
+}
+
+// ClearStateChangedAt clears the value of the "state_changed_at" field.
+func (u *PostUpsert) ClearStateChangedAt() *PostUpsert {
+	u.SetNull(post.FieldStateChangedAt)
 	return u
 }
 
@@ -856,6 +892,27 @@ func (u *PostUpsertOne) SetUpdatedAt(v time.Time) *PostUpsertOne {
 func (u *PostUpsertOne) UpdateUpdatedAt() *PostUpsertOne {
 	return u.Update(func(s *PostUpsert) {
 		s.UpdateUpdatedAt()
+	})
+}
+
+// SetStateChangedAt sets the "state_changed_at" field.
+func (u *PostUpsertOne) SetStateChangedAt(v time.Time) *PostUpsertOne {
+	return u.Update(func(s *PostUpsert) {
+		s.SetStateChangedAt(v)
+	})
+}
+
+// UpdateStateChangedAt sets the "state_changed_at" field to the value that was provided on create.
+func (u *PostUpsertOne) UpdateStateChangedAt() *PostUpsertOne {
+	return u.Update(func(s *PostUpsert) {
+		s.UpdateStateChangedAt()
+	})
+}
+
+// ClearStateChangedAt clears the value of the "state_changed_at" field.
+func (u *PostUpsertOne) ClearStateChangedAt() *PostUpsertOne {
+	return u.Update(func(s *PostUpsert) {
+		s.ClearStateChangedAt()
 	})
 }
 
@@ -1280,6 +1337,27 @@ func (u *PostUpsertBulk) SetUpdatedAt(v time.Time) *PostUpsertBulk {
 func (u *PostUpsertBulk) UpdateUpdatedAt() *PostUpsertBulk {
 	return u.Update(func(s *PostUpsert) {
 		s.UpdateUpdatedAt()
+	})
+}
+
+// SetStateChangedAt sets the "state_changed_at" field.
+func (u *PostUpsertBulk) SetStateChangedAt(v time.Time) *PostUpsertBulk {
+	return u.Update(func(s *PostUpsert) {
+		s.SetStateChangedAt(v)
+	})
+}
+
+// UpdateStateChangedAt sets the "state_changed_at" field to the value that was provided on create.
+func (u *PostUpsertBulk) UpdateStateChangedAt() *PostUpsertBulk {
+	return u.Update(func(s *PostUpsert) {
+		s.UpdateStateChangedAt()
+	})
+}
+
+// ClearStateChangedAt clears the value of the "state_changed_at" field.
+func (u *PostUpsertBulk) ClearStateChangedAt() *PostUpsertBulk {
+	return u.Update(func(s *PostUpsert) {
+		s.ClearStateChangedAt()
 	})
 }
 

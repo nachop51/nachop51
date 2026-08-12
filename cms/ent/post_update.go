@@ -196,6 +196,26 @@ func (_u *PostUpdate) SetUpdatedAt(v time.Time) *PostUpdate {
 	return _u
 }
 
+// SetStateChangedAt sets the "state_changed_at" field.
+func (_u *PostUpdate) SetStateChangedAt(v time.Time) *PostUpdate {
+	_u.mutation.SetStateChangedAt(v)
+	return _u
+}
+
+// SetNillableStateChangedAt sets the "state_changed_at" field if the given value is not nil.
+func (_u *PostUpdate) SetNillableStateChangedAt(v *time.Time) *PostUpdate {
+	if v != nil {
+		_u.SetStateChangedAt(*v)
+	}
+	return _u
+}
+
+// ClearStateChangedAt clears the value of the "state_changed_at" field.
+func (_u *PostUpdate) ClearStateChangedAt() *PostUpdate {
+	_u.mutation.ClearStateChangedAt()
+	return _u
+}
+
 // SetPublishedSnapshot sets the "published_snapshot" field.
 func (_u *PostUpdate) SetPublishedSnapshot(v *model.Snapshot) *PostUpdate {
 	_u.mutation.SetPublishedSnapshot(v)
@@ -312,6 +332,12 @@ func (_u *PostUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(post.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.StateChangedAt(); ok {
+		_spec.SetField(post.FieldStateChangedAt, field.TypeTime, value)
+	}
+	if _u.mutation.StateChangedAtCleared() {
+		_spec.ClearField(post.FieldStateChangedAt, field.TypeTime)
 	}
 	if value, ok := _u.mutation.PublishedSnapshot(); ok {
 		_spec.SetField(post.FieldPublishedSnapshot, field.TypeJSON, value)
@@ -505,6 +531,26 @@ func (_u *PostUpdateOne) SetUpdatedAt(v time.Time) *PostUpdateOne {
 	return _u
 }
 
+// SetStateChangedAt sets the "state_changed_at" field.
+func (_u *PostUpdateOne) SetStateChangedAt(v time.Time) *PostUpdateOne {
+	_u.mutation.SetStateChangedAt(v)
+	return _u
+}
+
+// SetNillableStateChangedAt sets the "state_changed_at" field if the given value is not nil.
+func (_u *PostUpdateOne) SetNillableStateChangedAt(v *time.Time) *PostUpdateOne {
+	if v != nil {
+		_u.SetStateChangedAt(*v)
+	}
+	return _u
+}
+
+// ClearStateChangedAt clears the value of the "state_changed_at" field.
+func (_u *PostUpdateOne) ClearStateChangedAt() *PostUpdateOne {
+	_u.mutation.ClearStateChangedAt()
+	return _u
+}
+
 // SetPublishedSnapshot sets the "published_snapshot" field.
 func (_u *PostUpdateOne) SetPublishedSnapshot(v *model.Snapshot) *PostUpdateOne {
 	_u.mutation.SetPublishedSnapshot(v)
@@ -651,6 +697,12 @@ func (_u *PostUpdateOne) sqlSave(ctx context.Context) (_node *Post, err error) {
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(post.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.StateChangedAt(); ok {
+		_spec.SetField(post.FieldStateChangedAt, field.TypeTime, value)
+	}
+	if _u.mutation.StateChangedAtCleared() {
+		_spec.ClearField(post.FieldStateChangedAt, field.TypeTime)
 	}
 	if value, ok := _u.mutation.PublishedSnapshot(); ok {
 		_spec.SetField(post.FieldPublishedSnapshot, field.TypeJSON, value)

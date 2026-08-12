@@ -45,6 +45,7 @@ var (
 		{Name: "published_at", Type: field.TypeTime, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "state_changed_at", Type: field.TypeTime, Nullable: true},
 		{Name: "published_snapshot", Type: field.TypeJSON, Nullable: true},
 	}
 	// PostsTable holds the schema information for the "posts" table.

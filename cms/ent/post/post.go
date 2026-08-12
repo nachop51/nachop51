@@ -40,6 +40,8 @@ const (
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
+	// FieldStateChangedAt holds the string denoting the state_changed_at field in the database.
+	FieldStateChangedAt = "state_changed_at"
 	// FieldPublishedSnapshot holds the string denoting the published_snapshot field in the database.
 	FieldPublishedSnapshot = "published_snapshot"
 	// Table holds the table name of the post in the database.
@@ -62,6 +64,7 @@ var Columns = []string{
 	FieldPublishedAt,
 	FieldCreatedAt,
 	FieldUpdatedAt,
+	FieldStateChangedAt,
 	FieldPublishedSnapshot,
 }
 
@@ -159,4 +162,9 @@ func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 // ByUpdatedAt orders the results by the updated_at field.
 func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
+}
+
+// ByStateChangedAt orders the results by the state_changed_at field.
+func ByStateChangedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStateChangedAt, opts...).ToFunc()
 }

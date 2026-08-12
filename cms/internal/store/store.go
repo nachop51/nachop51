@@ -75,6 +75,7 @@ func (s *Store) Publish(ctx context.Context, id uuid.UUID, at time.Time) error {
 	return s.c.Post.UpdateOneID(id).
 		SetPublishedSnapshot(snap).
 		SetPublishedAt(at).
+		SetStateChangedAt(time.Now()).
 		Exec(ctx)
 }
 
@@ -82,6 +83,7 @@ func (s *Store) Unpublish(ctx context.Context, id uuid.UUID) error {
 	return s.c.Post.UpdateOneID(id).
 		ClearPublishedSnapshot().
 		ClearPublishedAt().
+		SetStateChangedAt(time.Now()).
 		Exec(ctx)
 }
 
@@ -95,9 +97,17 @@ func (s *Store) ListPublished(ctx context.Context) ([]*ent.Post, error) {
 func (s *Store) HasPendingSince(ctx context.Context, since time.Time) (bool, error) {
 	return s.c.Post.Query().
 		Where(
-			post.PublishedAtNotNil(),
-			post.PublishedAtLTE(time.Now()),
-			post.PublishedAtGT(since),
+			post.Or(
+				post.And(
+					post.StateChangedAtNotNil(),
+					post.UpdatedAtGTE(since),
+				),
+				post.And(
+					post.PublishedAtNotNil(),
+					post.PublishedAtLTE(time.Now()),
+					post.PublishedAtGTE(since),
+				),
+			),
 		).
 		Exist(ctx)
 }

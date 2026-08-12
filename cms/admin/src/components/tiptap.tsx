@@ -26,7 +26,7 @@ export default function TipTap({ initial, onChange }: Props) {
 
   return (
     <>
-      <EditorContent className="border border-red-500" editor={editor} />
+      <EditorContent className="border border-red-500 " editor={editor} />
       <FloatingMenu editor={editor}>This is the floating menu</FloatingMenu>
       <BubbleMenu editor={editor}>This is the bubble menu</BubbleMenu>
     </>

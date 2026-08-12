@@ -38,6 +38,7 @@ func (Post) Fields() []ent.Field {
 		field.Time("published_at").Optional().Nillable(),
 		field.Time("created_at").Default(time.Now).Immutable(),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
+		field.Time("state_changed_at").Optional().Nillable(),
 
 		field.JSON("published_snapshot", &model.Snapshot{}).Optional(),
 	}

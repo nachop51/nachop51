@@ -3,10 +3,13 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -18,6 +21,7 @@ import (
 	"github.com/nachop51/nachop51/ent"
 	"github.com/nachop51/nachop51/internal/deploy"
 	"github.com/nachop51/nachop51/internal/store"
+	"github.com/nachop51/nachop51/internal/web"
 )
 
 type Json map[string]interface{}
@@ -50,6 +54,9 @@ func main() {
 
 	st := store.New(client)
 
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	e := echo.New()
 
 	e.Use(middleware.RequestLogger())
@@ -76,6 +83,10 @@ func main() {
 			return c.JSON(http.StatusBadRequest, Json{"error": "invalid request body"})
 		}
 		d.ID = id
+
+		if d.Title == "" || d.Content == "" || d.Lang == "" || d.Slug == "" {
+			return c.JSON(http.StatusBadRequest, Json{"error": "title, content, lang and slug are required"})
+		}
 
 		if err := st.Save(c.Request().Context(), d); err != nil {
 			log.Printf("failed saving post: %v", err)
@@ -148,39 +159,44 @@ func main() {
 		SiteDir:    os.Getenv("SITE_DIR"),
 		ContentDir: "src/content/blog",
 		Project:    os.Getenv("CF_PROJECT"),
-		Interval:   5 * time.Minute,
 	}, st)
 
 	if err != nil {
 		log.Fatalf("failed creating deployer: %v", err)
 	}
 
-	e.POST("/api/export", func(c *echo.Context) error {
-		if err := dep.Export(c.Request().Context()); err != nil {
-			if errors.Is(err, deploy.ErrBusy) {
-				return c.JSON(http.StatusConflict, Json{"error": "deploy already running"})
-			}
-			e.Logger.Error("failed exporting posts", "error", err)
-			return c.JSON(http.StatusInternalServerError, Json{"error": "something went wrong exporting the posts"})
-		}
+	e.POST("/api/deploy", func(c *echo.Context) error {
+		err := dep.Run(ctx)
 
-		return c.NoContent(http.StatusOK)
+		if errors.Is(err, deploy.ErrBusy) {
+			return c.JSON(http.StatusConflict, Json{"error": "deployment already in progress"})
+		}
+		return c.NoContent(http.StatusAccepted)
 	})
 
 	e.GET("/api/deploy", func(c *echo.Context) error {
 		return c.JSON(http.StatusOK, dep.Status())
 	})
 
-	e.POST("/api/deploy", func(c *echo.Context) error {
-		if err := dep.TriggerAsync(); errors.Is(err, deploy.ErrBusy) {
-			return c.JSON(http.StatusConflict, Json{"error": "deploy already running"})
+	sub, err := web.FS()
+	if err != nil {
+		log.Fatalf("failed to get web fs: %v", err)
+	}
+	handler := http.FileServer(http.FS(sub))
+
+	e.GET("/*", func(c *echo.Context) error {
+		path := strings.TrimPrefix(c.Request().URL.Path, "/")
+		fmt.Printf("path: %s\n\n", path)
+		if _, err := fs.Stat(sub, path); err != nil {
+			c.Request().URL.Path = "/"
 		}
-		return c.JSON(http.StatusAccepted, dep.Status())
+		handler.ServeHTTP(c.Response(), c.Request())
+		return nil
 	})
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	go dep.Run(ctx)
+	sch := deploy.NewScheduler(dep, 10*time.Minute)
+
+	go sch.Run(ctx)
 
 	sc := echo.StartConfig{Address: ":1234", GracefulTimeout: 10 * time.Second}
 	if err := sc.Start(ctx, e); err != nil && !errors.Is(err, http.ErrServerClosed) {

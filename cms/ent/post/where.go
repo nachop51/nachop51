@@ -110,6 +110,11 @@ func UpdatedAt(v time.Time) predicate.Post {
 	return predicate.Post(sql.FieldEQ(FieldUpdatedAt, v))
 }
 
+// StateChangedAt applies equality check predicate on the "state_changed_at" field. It's identical to StateChangedAtEQ.
+func StateChangedAt(v time.Time) predicate.Post {
+	return predicate.Post(sql.FieldEQ(FieldStateChangedAt, v))
+}
+
 // LangEQ applies the EQ predicate on the "lang" field.
 func LangEQ(v string) predicate.Post {
 	return predicate.Post(sql.FieldEQ(FieldLang, v))
@@ -788,6 +793,56 @@ func UpdatedAtLT(v time.Time) predicate.Post {
 // UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
 func UpdatedAtLTE(v time.Time) predicate.Post {
 	return predicate.Post(sql.FieldLTE(FieldUpdatedAt, v))
+}
+
+// StateChangedAtEQ applies the EQ predicate on the "state_changed_at" field.
+func StateChangedAtEQ(v time.Time) predicate.Post {
+	return predicate.Post(sql.FieldEQ(FieldStateChangedAt, v))
+}
+
+// StateChangedAtNEQ applies the NEQ predicate on the "state_changed_at" field.
+func StateChangedAtNEQ(v time.Time) predicate.Post {
+	return predicate.Post(sql.FieldNEQ(FieldStateChangedAt, v))
+}
+
+// StateChangedAtIn applies the In predicate on the "state_changed_at" field.
+func StateChangedAtIn(vs ...time.Time) predicate.Post {
+	return predicate.Post(sql.FieldIn(FieldStateChangedAt, vs...))
+}
+
+// StateChangedAtNotIn applies the NotIn predicate on the "state_changed_at" field.
+func StateChangedAtNotIn(vs ...time.Time) predicate.Post {
+	return predicate.Post(sql.FieldNotIn(FieldStateChangedAt, vs...))
+}
+
+// StateChangedAtGT applies the GT predicate on the "state_changed_at" field.
+func StateChangedAtGT(v time.Time) predicate.Post {
+	return predicate.Post(sql.FieldGT(FieldStateChangedAt, v))
+}
+
+// StateChangedAtGTE applies the GTE predicate on the "state_changed_at" field.
+func StateChangedAtGTE(v time.Time) predicate.Post {
+	return predicate.Post(sql.FieldGTE(FieldStateChangedAt, v))
+}
+
+// StateChangedAtLT applies the LT predicate on the "state_changed_at" field.
+func StateChangedAtLT(v time.Time) predicate.Post {
+	return predicate.Post(sql.FieldLT(FieldStateChangedAt, v))
+}
+
+// StateChangedAtLTE applies the LTE predicate on the "state_changed_at" field.
+func StateChangedAtLTE(v time.Time) predicate.Post {
+	return predicate.Post(sql.FieldLTE(FieldStateChangedAt, v))
+}
+
+// StateChangedAtIsNil applies the IsNil predicate on the "state_changed_at" field.
+func StateChangedAtIsNil() predicate.Post {
+	return predicate.Post(sql.FieldIsNull(FieldStateChangedAt))
+}
+
+// StateChangedAtNotNil applies the NotNil predicate on the "state_changed_at" field.
+func StateChangedAtNotNil() predicate.Post {
+	return predicate.Post(sql.FieldNotNull(FieldStateChangedAt))
 }
 
 // PublishedSnapshotIsNil applies the IsNil predicate on the "published_snapshot" field.
