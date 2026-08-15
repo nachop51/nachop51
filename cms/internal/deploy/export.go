@@ -1,4 +1,4 @@
-package export
+package deploy
 
 import (
 	"fmt"
@@ -22,7 +22,7 @@ type frontmatter struct {
 	OldSlugs       []string `yaml:"oldSlugs,omitempty"`
 }
 
-func Run(contentDir string, posts []*ent.Post) error {
+func runExport(contentDir string, posts []*ent.Post) error {
 	if err := os.RemoveAll(contentDir); err != nil {
 		return err
 	}

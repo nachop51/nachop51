@@ -9,6 +9,29 @@ import (
 )
 
 var (
+	// AssetsColumns holds the columns for the "assets" table.
+	AssetsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "key", Type: field.TypeString},
+		{Name: "url", Type: field.TypeString},
+		{Name: "original_name", Type: field.TypeString, Default: ""},
+		{Name: "content_type", Type: field.TypeString},
+		{Name: "size", Type: field.TypeInt64},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// AssetsTable holds the schema information for the "assets" table.
+	AssetsTable = &schema.Table{
+		Name:       "assets",
+		Columns:    AssetsColumns,
+		PrimaryKey: []*schema.Column{AssetsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "asset_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{AssetsColumns[6]},
+			},
+		},
+	}
 	// DeploymentsColumns holds the columns for the "deployments" table.
 	DeploymentsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -76,6 +99,7 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		AssetsTable,
 		DeploymentsTable,
 		PostsTable,
 	}

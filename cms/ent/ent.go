@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/nachop51/nachop51/ent/asset"
 	"github.com/nachop51/nachop51/ent/deployment"
 	"github.com/nachop51/nachop51/ent/post"
 )
@@ -74,6 +75,7 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
+			asset.Table:      asset.ValidColumn,
 			deployment.Table: deployment.ValidColumn,
 			post.Table:       post.ValidColumn,
 		})

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/nachop51/nachop51/ent/asset"
 	"github.com/nachop51/nachop51/ent/deployment"
 	"github.com/nachop51/nachop51/ent/post"
 	"github.com/nachop51/nachop51/ent/schema"
@@ -15,6 +16,24 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	assetFields := schema.Asset{}.Fields()
+	_ = assetFields
+	// assetDescOriginalName is the schema descriptor for original_name field.
+	assetDescOriginalName := assetFields[3].Descriptor()
+	// asset.DefaultOriginalName holds the default value on creation for the original_name field.
+	asset.DefaultOriginalName = assetDescOriginalName.Default.(string)
+	// assetDescSize is the schema descriptor for size field.
+	assetDescSize := assetFields[5].Descriptor()
+	// asset.SizeValidator is a validator for the "size" field. It is called by the builders before save.
+	asset.SizeValidator = assetDescSize.Validators[0].(func(int64) error)
+	// assetDescCreatedAt is the schema descriptor for created_at field.
+	assetDescCreatedAt := assetFields[6].Descriptor()
+	// asset.DefaultCreatedAt holds the default value on creation for the created_at field.
+	asset.DefaultCreatedAt = assetDescCreatedAt.Default.(func() time.Time)
+	// assetDescID is the schema descriptor for id field.
+	assetDescID := assetFields[0].Descriptor()
+	// asset.DefaultID holds the default value on creation for the id field.
+	asset.DefaultID = assetDescID.Default.(func() uuid.UUID)
 	deploymentFields := schema.Deployment{}.Fields()
 	_ = deploymentFields
 	// deploymentDescCreatedAt is the schema descriptor for created_at field.

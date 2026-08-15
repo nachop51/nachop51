@@ -9,14 +9,14 @@ import (
 
 type Scheduler struct {
 	Interval time.Duration
-	dep      *Deployer
+	svc      *Service
 }
 
-func NewScheduler(dep *Deployer, interval time.Duration) *Scheduler {
+func NewScheduler(svc *Service, interval time.Duration) *Scheduler {
 	if interval <= 0 {
 		interval = 5 * time.Minute
 	}
-	return &Scheduler{Interval: interval, dep: dep}
+	return &Scheduler{Interval: interval, svc: svc}
 }
 
 func (s *Scheduler) Run(ctx context.Context) {
@@ -36,12 +36,12 @@ func (s *Scheduler) Run(ctx context.Context) {
 }
 
 func (s *Scheduler) tick(ctx context.Context) error {
-	last, err := s.dep.store.LastDeploy(ctx)
+	last, err := s.svc.LastDeploy(ctx)
 	if err != nil {
 		return err
 	}
 
-	pending, err := s.dep.store.HasPendingSince(ctx, last)
+	pending, err := s.svc.HasPendingSince(ctx, last)
 	if err != nil {
 		return err
 	}
@@ -51,7 +51,7 @@ func (s *Scheduler) tick(ctx context.Context) error {
 
 	log.Printf("scheduler: pending changes found, starting deployment")
 
-	err = s.dep.Run(ctx)
+	err = s.svc.Run(ctx)
 	if errors.Is(err, ErrBusy) {
 		return nil
 	}

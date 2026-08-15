@@ -6,6 +6,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 )
 
+// Asset is the predicate function for asset builders.
+type Asset func(*sql.Selector)
+
 // Deployment is the predicate function for deployment builders.
 type Deployment func(*sql.Selector)
 
