@@ -4,6 +4,8 @@
   License MIT: https://github.com/HermanMartinus/bearblog/blob/master/LICENSE.md
  */
 
+@import "../../../shared/markdown.css";
+
 :root {
 	--accent: #2337ff;
 	--accent-dark: #000d8a;
@@ -17,7 +19,7 @@
 		0 16px 32px rgba(var(--gray), 33%);
 }
 body {
-	font-family: var(--font-atkinson);
+	font-family: var(--md-font-body);
 	margin: 0;
 	padding: 0;
 	text-align: left;
@@ -72,9 +74,6 @@ a:hover {
 }
 p {
 	margin-bottom: 1em;
-}
-.prose p {
-	margin-bottom: 2em;
 }
 textarea {
 	width: 100%;

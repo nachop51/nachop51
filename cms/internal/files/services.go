@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -19,7 +20,17 @@ type Service struct {
 	publicDomain string
 }
 
-func NewService(ctx context.Context, db *ent.Client, accountID, accessKey, secret, bucket, publicDomain string) (*Service, error) {
+func NewService(ctx context.Context, db *ent.Client) (*Service, error) {
+	accountID := os.Getenv("R2_ACCOUNT_ID")
+	accessKey := os.Getenv("R2_ACCESS_KEY")
+	secret := os.Getenv("R2_SECRET_KEY")
+	bucket := os.Getenv("R2_BUCKET")
+	publicDomain := os.Getenv("R2_PUBLIC_DOMAIN")
+
+	if accountID == "" || accessKey == "" || secret == "" || bucket == "" || publicDomain == "" {
+		return nil, fmt.Errorf("storage: missing required environment variables")
+	}
+
 	cfg, err := config.LoadDefaultConfig(ctx,
 		config.WithRegion("auto"),
 		config.WithCredentialsProvider(aws.CredentialsProviderFunc(

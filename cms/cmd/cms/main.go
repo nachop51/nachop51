@@ -50,27 +50,17 @@ func main() {
 	e.Use(middleware.RequestLogger())
 	e.Use(middleware.Recover())
 
+	// Services
+
 	postsService := posts.NewService(client)
-	postsHandler := posts.NewHandler(postsService)
-	postsHandler.RegisterRoutes(e)
-
-	filesSerivce, err := files.NewService(ctx, client, os.Getenv("R2_ACCOUNT_ID"),
-		os.Getenv("R2_ACCESS_KEY"),
-		os.Getenv("R2_SECRET_KEY"),
-		os.Getenv("R2_BUCKET"),
-		os.Getenv("R2_PUBLIC_DOMAIN"),
-	)
-
+	filesSerivce, err := files.NewService(ctx, client)
 	if err != nil {
 		log.Fatalf("failed creating files service: %v", err)
 	}
 
-	filesHandler := files.NewHandler(filesSerivce)
-	filesHandler.RegisterRoutes(e)
-
 	deployService, err := deploy.NewService(
 		os.Getenv("SITE_DIR"),
-		"src/content/blog",
+		os.Getenv("CONTENT_DIR"),
 		client,
 		postsService,
 	)
@@ -78,13 +68,16 @@ func main() {
 		log.Fatalf("failed creating deploy service: %v", err)
 	}
 
-	deployHandler := deploy.NewHandler(ctx, deployService)
-	deployHandler.RegisterRoutes(e)
-
 	webService, err := web.NewService()
 	if err != nil {
 		log.Fatalf("failed creating web service: %v", err)
 	}
+
+	// Handlers
+
+	posts.NewHandler(postsService).RegisterRoutes(e)
+	files.NewHandler(filesSerivce).RegisterRoutes(e)
+	deploy.NewHandler(ctx, deployService).RegisterRoutes(e)
 	web.NewHandler(webService).RegisterRoutes(e)
 
 	e.Any("/api/*", func(c *echo.Context) error {

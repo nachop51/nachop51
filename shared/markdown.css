@@ -1,0 +1,936 @@
+/*
+ * markdown.css — the single source of truth for rendered post content.
+ *
+ * Imported by BOTH:
+ *   - site/src/styles/global.css      (Astro, production output)
+ *   - cms/admin/src/index.css         (TipTap editor, WYSIWYG)
+ *
+ * Everything is scoped to `.markdown`. Put that class on the element that
+ * wraps the rendered post body and nothing else.
+ *
+ * Rules for editing this file:
+ *   1. Never rely on user-agent defaults. The CMS runs behind Tailwind
+ *      preflight (which strips list markers, heading sizes and margins) and
+ *      the site runs behind Bear Blog's global element styles. Anything left
+ *      implicit will drift between the two. Declare it.
+ *   2. Keep sizes in `em` relative to `--md-font-size`, which is in `rem`, so
+ *      the host page's own `font-size` can't leak in.
+ *   3. No Tailwind directives, no Astro syntax. Plain CSS only.
+ *
+ * The fonts are served from `/fonts/` by both apps. The files live in
+ * site/public/fonts/ and cms/admin/public/fonts/ and must stay identical —
+ * if you replace one, replace the other.
+ */
+
+/* Outfit is variable (100–900) and upright only; there is no italic cut, so
+   `em` renders as a synthetic oblique — the same one in both apps. */
+@font-face {
+  font-family: "Outfit";
+  src: url("/fonts/outfit-latin.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191,
+    U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Outfit";
+  src: url("/fonts/outfit-latin-ext.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+    U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF,
+    U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/*
+ * Palette and metrics follow Obsidian's defaults: its base grey ramp, its
+ * accent hue (254), its 1.125 heading scale and its p-spacing rhythm. The
+ * accent is two steps darker than Obsidian's #8b6cef, which only reaches
+ * 3.8:1 on white — #7551ec is the same hue at 5.1:1.
+ */
+:root {
+  /* Type */
+  --md-font-body: "Outfit", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --md-font-mono: ui-monospace, SFMono-Regular, "SF Mono", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --md-font-size: 1.0625rem;
+  --md-line-height: 1.6;
+  --md-measure: 42rem;
+
+  /* Rhythm. One gap, everywhere: paragraph, heading, list, quote, code, table,
+     rule. It is deliberately tight — a blank line in the editor is a real
+     blank line on the page, so space is something you add where a section
+     wants it rather than something every block carries by default.
+     Each value is literally the space you see; see "rhythm" at the foot of
+     this file for why that needs help from the cascade. The heading and rule
+     tokens exist only so either can be pulled away from the common gap later
+     without fighting margin collapsing. */
+  /* Body blocks add nothing: consecutive paragraphs sit on the line grid, the
+     way they do in Obsidian, and a blank line is what separates them. */
+  --md-p-spacing: 0px;
+  /* Headings and rules are the two exceptions, and both are anchored to the
+     font size rather than to --md-p-spacing so they survive it going to zero.
+     Obsidian has one heading variable and it means "space above" — there is
+     no below — which lands a heading roughly 1.7 line-heights under the
+     previous block and hard against the text it introduces. This is sized to
+     match, and it is large enough to dominate the half-leading a heading
+     carries, so the gap stays even from h1 down to h6 instead of shrinking
+     with the font size. */
+  --md-heading-spacing: calc(var(--md-font-size) * 0.9);
+  /* Obsidian has no "below" variable, but its paragraphs carry a top margin
+     that ours don't, so the text under a heading still clears it by about one
+     line. This puts that back explicitly. Zero it for a tighter look. */
+  --md-heading-spacing-after: calc(var(--md-font-size) * 0.15);
+  --md-rule-spacing: calc(var(--md-font-size) * 0.5);
+
+  /* Ink */
+  --md-ink: #222222;
+  --md-ink-soft: #3f3f3f;
+  --md-ink-muted: #5c5c5c;
+  --md-ink-faint: #ababab;
+
+  /* Structure */
+  --md-rule: #e0e0e0;
+  --md-rule-strong: #d4d4d4;
+  --md-surface-soft: #fafafa;
+
+  /* Accent */
+  --md-accent: #7551ec;
+  --md-accent-strong: #5c39d9;
+  --md-mark-bg: #fbf0c4;
+  --md-mark-ink: #4a3c10;
+
+  /* Code */
+  --md-code-bg: #f6f6f7;
+  --md-code-border: #e6e6e8;
+  /* min-light's own token colour, so an unhighlighted or plaintext
+     block sits in the same ink as a highlighted one. */
+  --md-code-ink: #24292e;
+  --md-code-radius: 6px;
+}
+
+/*
+ * Dark palette, on Obsidian's dark base ramp. Opt-in only: it activates when
+ * an ancestor carries data-theme="dark". Neither app sets that yet, so both
+ * stay light and therefore stay identical. Flip both hosts together.
+ */
+[data-theme="dark"] {
+  --md-ink: #dadada;
+  --md-ink-soft: #b3b3b3;
+  --md-ink-muted: #999999;
+  --md-ink-faint: #666666;
+
+  --md-rule: #363636;
+  --md-rule-strong: #3f3f3f;
+  --md-surface-soft: #242424;
+
+  --md-accent: #997ef1;
+  --md-accent-strong: #b6a3f5;
+  --md-mark-bg: #4a3c10;
+  --md-mark-ink: #f7ecc9;
+
+  --md-code-bg: #242424;
+  --md-code-border: #2f2f2f;
+  --md-code-ink: #b3b3b3;
+}
+
+/* ---------------------------------------------------------------- root -- */
+
+/*
+ * Normalise the box model inside the block. The CMS sits behind Tailwind
+ * preflight (border-box everywhere), the site does not (content-box). Without
+ * this, anything with an explicit width plus padding or a border — checkboxes
+ * most visibly — measures differently in the two apps.
+ */
+.markdown,
+.markdown *,
+.markdown *::before,
+.markdown *::after {
+  box-sizing: border-box;
+}
+
+.markdown {
+  max-width: var(--md-measure);
+  margin-inline: auto;
+  font-family: var(--md-font-body);
+  font-size: var(--md-font-size);
+  line-height: var(--md-line-height);
+  font-weight: 400;
+  color: var(--md-ink);
+  text-align: left;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: none;
+  tab-size: 2;
+  /*
+   * TipTap disables ligatures on the editor root because they confuse caret
+   * placement inside a word. That reason is real, so the site matches the
+   * editor rather than the other way round.
+   */
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0;
+}
+
+/* The editor root is the .markdown element itself; kill the focus ring. */
+.markdown:focus,
+.markdown:focus-visible {
+  outline: none;
+}
+
+/* Also stops the first child's margin collapsing out through the wrapper. */
+.markdown > :first-child { margin-top: 0; }
+.markdown > :last-child { margin-bottom: 0; }
+
+.markdown ::selection {
+  background: color-mix(in srgb, var(--md-accent) 22%, transparent);
+  color: inherit;
+}
+
+/* ------------------------------------------------------------ headings -- */
+
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  /* Asymmetric: most of the space goes above, separating the heading from the
+     section before, and only about a line's worth below. */
+  margin-block: var(--md-heading-spacing) var(--md-heading-spacing-after);
+  color: var(--md-ink);
+  font-family: var(--md-font-body);
+  font-weight: 600;
+  /* Tight: a heading is nearly always one line, so leading here buys no
+     readability and only pads the gap above and below it. */
+  line-height: 1.1;
+  letter-spacing: 0;
+  text-wrap: balance;
+  scroll-margin-top: 2rem;
+}
+
+/* Obsidian's 1.125 modular scale. */
+.markdown h1 { font-size: 1.802em; font-weight: 700; }
+.markdown h2 { font-size: 1.602em; }
+.markdown h3 { font-size: 1.424em; }
+.markdown h4 { font-size: 1.266em; }
+.markdown h5 { font-size: 1.125em; }
+.markdown h6 { font-size: 1em; color: var(--md-ink-muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  .markdown *,
+  .markdown *::before,
+  .markdown *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* --------------------------------------------------------------- prose -- */
+
+.markdown p {
+  margin-block: var(--md-p-spacing);
+  text-wrap: pretty;
+}
+
+.markdown a {
+  color: var(--md-accent);
+  font-weight: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in srgb, var(--md-accent) 35%, transparent);
+  text-underline-offset: 0.16em;
+  transition: text-decoration-color 120ms ease, color 120ms ease;
+}
+
+.markdown a:hover {
+  color: var(--md-accent-strong);
+  text-decoration-color: currentColor;
+}
+
+.markdown a:focus-visible {
+  outline: 2px solid var(--md-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.markdown strong,
+.markdown b {
+  font-weight: 600;
+  color: var(--md-ink);
+}
+
+.markdown em,
+.markdown i { font-style: italic; }
+
+.markdown del,
+.markdown s {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  color: var(--md-ink-muted);
+}
+
+.markdown mark {
+  background: var(--md-mark-bg);
+  color: var(--md-mark-ink);
+  padding: 0.08em 0.22em;
+  border-radius: 3px;
+}
+
+.markdown small { font-size: 0.86em; color: var(--md-ink-muted); }
+.markdown sub,
+.markdown sup {
+  font-size: 0.72em;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+.markdown sup { top: -0.5em; }
+.markdown sub { bottom: -0.25em; }
+
+.markdown abbr[title] {
+  text-decoration: underline dotted;
+  text-underline-offset: 0.2em;
+  cursor: help;
+}
+
+.markdown kbd {
+  font-family: var(--md-font-mono);
+  font-size: 0.8em;
+  padding: 0.15em 0.4em;
+  border: 1px solid var(--md-rule-strong);
+  border-radius: 4px;
+  background: var(--md-surface-soft);
+  color: var(--md-ink-soft);
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------- lists -- */
+
+.markdown ul,
+.markdown ol {
+  margin-block: var(--md-p-spacing);
+  padding-inline-start: 1.6em;
+}
+
+.markdown ul { list-style: disc outside; }
+.markdown ol { list-style: decimal outside; }
+.markdown ul ul { list-style-type: circle; }
+.markdown ul ul ul { list-style-type: square; }
+.markdown ol ol { list-style-type: lower-alpha; }
+.markdown ol ol ol { list-style-type: lower-roman; }
+
+.markdown li {
+  margin-block: 0.15em;
+  padding-inline-start: 0.1em;
+}
+
+/* Obsidian keeps markers quiet — they mark structure, they don't decorate. */
+.markdown li::marker {
+  color: var(--md-ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A nested list belongs to its parent item, not to the document flow. */
+.markdown li > ul,
+.markdown li > ol {
+  margin-block: 0.15em;
+}
+
+.markdown li > p { margin-block: 0 0.5em; }
+.markdown li > p:last-child { margin-bottom: 0; }
+
+/* GFM task lists */
+.markdown ul.contains-task-list,
+.markdown ul:has(> li > input[type="checkbox"]) {
+  list-style: none;
+  padding-inline-start: 0.1em;
+}
+
+.markdown li.task-list-item,
+.markdown li:has(> input[type="checkbox"]) {
+  padding-inline-start: 0;
+}
+
+.markdown li > input[type="checkbox"] {
+  /* `font`, `margin` and `color` are all reset by Tailwind preflight but not
+     by the UA, so declare them rather than inherit whichever host we're in. */
+  appearance: none;
+  font: inherit;
+  color: inherit;
+  opacity: 1;
+  width: 0.95em;
+  height: 0.95em;
+  margin: 0 0.55em 0 0;
+  vertical-align: -0.1em;
+  border: 1.5px solid var(--md-rule-strong);
+  border-radius: 3px;
+  background: transparent;
+}
+
+.markdown li > input[type="checkbox"]:checked {
+  border-color: var(--md-accent);
+  background: var(--md-accent);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-6'/%3E%3C/svg%3E");
+  background-size: 100%;
+}
+
+/* Definition lists */
+.markdown dl { margin-block: var(--md-p-spacing); }
+.markdown dt { font-weight: 600; margin-top: 0.8em; }
+.markdown dd { margin: 0.2em 0 0 1.4em; color: var(--md-ink-soft); }
+
+/* ---------------------------------------------------------- blockquote -- */
+
+.markdown blockquote {
+  margin-block: var(--md-p-spacing);
+  margin-inline: 0;
+  padding: 0 0 0 1.2em;
+  border: 0;
+  border-inline-start: 2px solid var(--md-rule-strong);
+  color: var(--md-ink);
+  font-size: 1em;
+  font-style: normal;
+}
+
+.markdown blockquote > :first-child { margin-top: 0; }
+.markdown blockquote > :last-child { margin-bottom: 0; }
+
+.markdown blockquote cite {
+  display: block;
+  margin-top: 0.6em;
+  font-size: 0.85em;
+  font-style: normal;
+  color: var(--md-ink-muted);
+}
+.markdown blockquote cite::before { content: "— "; }
+
+/* ---------------------------------------------------------------- code -- */
+
+/* Preflight resets font-feature-settings on code/kbd/samp/pre; the UA does
+   not, so it would inherit "liga" 0 from the root on the site only. */
+.markdown code,
+.markdown pre,
+.markdown kbd,
+.markdown samp {
+  font-feature-settings: "liga" 0;
+  font-variation-settings: normal;
+}
+
+.markdown code {
+  font-family: var(--md-font-mono);
+  font-size: 0.875em;
+  font-weight: 400;
+  background: var(--md-code-bg);
+  color: var(--md-ink);
+  padding: 0.15em 0.35em;
+  border: 0;
+  border-radius: 4px;
+  white-space: break-spaces;
+}
+
+.markdown a code {
+  color: inherit;
+}
+
+.markdown h1 code,
+.markdown h2 code,
+.markdown h3 code,
+.markdown h4 code {
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+/*
+ * Code blocks. `!important` on the paint is deliberate: Shiki writes the
+ * theme background and base colour as inline styles on <pre>, and the CMS
+ * has no Shiki, so the frame has to be forced from here to stay identical.
+ * Token colours inside the block come from Shiki spans and are left alone.
+ */
+.markdown pre {
+  margin-block: var(--md-p-spacing);
+  padding: 0.9em 1.1em;
+  border: 1px solid var(--md-code-border);
+  border-radius: var(--md-code-radius);
+  background: var(--md-code-bg) !important;
+  color: var(--md-code-ink) !important;
+  font-family: var(--md-font-mono);
+  font-size: 0.875em;
+  line-height: 1.6;
+  /*
+   * `pre`, not `pre-wrap`: ProseMirror defaults code blocks to wrapping and
+   * Shiki defaults them to scrolling. Pin both to scrolling.
+   */
+  white-space: pre;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  tab-size: 2;
+}
+
+.markdown pre code {
+  display: block;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  font-weight: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  white-space: inherit;
+  min-width: 100%;
+  width: fit-content;
+}
+
+.markdown pre::-webkit-scrollbar { height: 8px; }
+.markdown pre::-webkit-scrollbar-thumb {
+  background: var(--md-rule-strong);
+  border-radius: 99px;
+}
+
+/* --------------------------------------------------------------- rules -- */
+
+.markdown hr {
+  height: 0;
+  margin-block: var(--md-rule-spacing);
+  border: 0;
+  border-top: 1px solid var(--md-rule);
+  color: inherit;
+}
+
+/* --------------------------------------------------------------- media -- */
+
+.markdown img,
+.markdown video,
+.markdown canvas,
+.markdown svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
+  border-radius: var(--md-code-radius);
+}
+
+/* An image on its own line is a block; one inside a sentence stays inline. */
+.markdown p > img:only-child,
+.markdown p > a:only-child > img {
+  margin-block: 0.3em;
+}
+
+.markdown p:has(> img:only-child),
+.markdown figure {
+  margin-block: var(--md-p-spacing);
+}
+
+.markdown figure { margin-inline: 0; }
+
+.markdown figcaption {
+  margin-top: 0.6em;
+  font-size: 0.85em;
+  line-height: 1.5;
+  color: var(--md-ink-muted);
+  text-align: center;
+}
+
+.markdown iframe {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  margin-block: var(--md-p-spacing);
+  border: 0;
+  border-radius: var(--md-code-radius);
+}
+
+/* -------------------------------------------------------------- tables -- */
+
+/*
+ * A table is as wide as it needs to be and no wider, so it starts small and
+ * only the edge you are typing towards moves. Full width instead would divide
+ * the measure between the columns, and then every keystroke in one cell would
+ * take room off the others and shuffle the text in all of them.
+ *
+ * A cell that refuses to wrap scrolls the wrapper rather than blowing out the
+ * measure. TipTap's node view draws that wrapper in the editor; on the site
+ * the same element comes from wrapTables in site/astro.config.ts, so one rule
+ * covers both apps.
+ *
+ * :where() keeps the wrapper at low specificity, so the rhythm rules at the
+ * bottom of this file still reach it.
+ */
+.markdown :where(.tableWrapper) {
+  margin-block: var(--md-p-spacing);
+  overflow-x: auto;
+}
+
+.markdown table {
+  width: max-content;
+  max-width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  font-size: 0.94em;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+
+.markdown th,
+.markdown td {
+  /* A column with nothing in it yet is still a column you can aim at. */
+  min-width: 5rem;
+  padding: 0.4em 0.8em;
+  border: 1px solid var(--md-rule);
+  text-align: left;
+  vertical-align: top;
+}
+
+.markdown th {
+  font-weight: 600;
+  background: var(--md-surface-soft);
+  white-space: nowrap;
+}
+
+/* Markdown puts bare text in a cell; TipTap wraps it in a paragraph. */
+.markdown th > p,
+.markdown td > p {
+  margin: 0;
+}
+
+.markdown table code { font-size: 0.9em; }
+
+/* ------------------------------------------------------------- details -- */
+
+.markdown details {
+  margin-block: var(--md-p-spacing);
+}
+
+.markdown summary {
+  cursor: pointer;
+  font-weight: 600;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.markdown summary::-webkit-details-marker { display: none; }
+
+.markdown summary::before {
+  content: "";
+  width: 0.35em;
+  height: 0.35em;
+  border-right: 1.5px solid var(--md-ink-faint);
+  border-bottom: 1.5px solid var(--md-ink-faint);
+  transform: rotate(-45deg);
+  transition: transform 140ms ease;
+}
+
+.markdown details[open] summary::before { transform: rotate(45deg); }
+
+.markdown details > :not(summary) {
+  margin-inline-start: 1.35em;
+}
+
+.markdown details[open] summary { margin-bottom: 0.5em; }
+.markdown details > :last-child { margin-bottom: 0; }
+
+/* ----------------------------------------------------------- footnotes -- */
+
+.markdown sup[data-footnote-ref] > a {
+  text-decoration: none;
+  font-weight: 600;
+  padding-inline: 0.1em;
+}
+
+.markdown .footnotes {
+  margin-top: var(--md-p-spacing);
+  padding-top: var(--md-p-spacing);
+  border-top: 1px solid var(--md-rule);
+  font-size: 0.9em;
+  color: var(--md-ink-muted);
+}
+
+.markdown .footnotes h2 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.markdown .footnotes li { margin-block: 0.4em; }
+.markdown .footnotes p { margin-block: 0.3em; }
+.markdown .data-footnote-backref { text-decoration: none; }
+
+/* ------------------------------------------------------ TipTap / editor -- */
+
+/*
+ * TipTap appends its stylesheet to <head> at runtime, so it wins every
+ * specificity tie against `.markdown`. These selectors are one class heavier
+ * on purpose — they hold regardless of stylesheet order.
+ *
+ * None of this reaches the static site, where these classes don't exist.
+ */
+.markdown.ProseMirror {
+  min-height: 1.6em;
+  /*
+   * TipTap sets `break-spaces`, which makes a trailing space count toward the
+   * line box and so wraps a word earlier than the site does. `pre-wrap` still
+   * preserves the spaces you type — it just lets a trailing one hang, exactly
+   * like `normal` — so line breaks land in the same place in both apps.
+   */
+  white-space: pre-wrap;
+}
+
+/* TipTap sets `pre-wrap` here; Shiki output scrolls. Pin both to scrolling. */
+.markdown.ProseMirror pre {
+  white-space: pre;
+}
+
+.markdown.ProseMirror p.is-editor-empty:first-child::before,
+.markdown.ProseMirror p.is-empty::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--md-ink-faint);
+}
+
+.markdown .ProseMirror-selectednode {
+  outline: 2px solid var(--md-accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.markdown :is(pre, .code-fence).ProseMirror-selectednode { outline-offset: 3px; }
+
+/*
+ * Code fences. The editor's code block is a node view (see code-fence.ts) that
+ * draws the ``` lines the markdown file carries and turns the info string into
+ * a field. The frame moves from the <pre> to the wrapper so those lines sit on
+ * the code surface rather than floating outside it, and every paint value below
+ * is the one `.markdown pre` already sets. Height is the one thing that differs
+ * from the site: the two fence lines are always laid out, marks showing or not,
+ * and they double as the block's vertical padding.
+ */
+.markdown .code-fence {
+  margin-block: var(--md-p-spacing);
+  padding-block: 0.2em;
+  border: 1px solid var(--md-code-border);
+  border-radius: var(--md-code-radius);
+  background: var(--md-code-bg);
+  color: var(--md-code-ink);
+  font-family: var(--md-font-mono);
+  font-size: 0.875em;
+  line-height: 1.6;
+  tab-size: 2;
+}
+
+/* The wrapper paints the block now; the <pre> is left holding the scroll.
+   Sizes are inherited rather than restated so the code and the fence lines
+   can't drift apart. `!important` answers the one on `.markdown pre`. */
+.markdown .code-fence > pre {
+  margin: 0;
+  padding-block: 0;
+  border: 0;
+  border-radius: 0;
+  background: none !important;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* The line the marks sit on is always laid out; only the marks come and go.
+   The block is then the same height whether or not the cursor is in it, and
+   nothing shifts under the caret when you move into one. These two lines are
+   also the block's vertical padding, which is why the wrapper adds almost
+   none of its own. */
+.markdown .code-fence-line {
+  display: flex;
+  align-items: center;
+  padding-inline: 1.1em;
+  color: var(--md-ink-faint);
+  user-select: none;
+  -webkit-user-select: none;
+  /* Until the marks are showing there is nothing here to aim at, so a click on
+     the line falls through to the editor and lands in the code. */
+  pointer-events: none;
+}
+
+.markdown :is(.code-fence-ticks, .code-fence-field) {
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+
+/* `is-focused` is a node decoration on the block holding the cursor, and
+   `is-editing` is the node view's own, for while the language field has the
+   focus the editor just lost. Together they mean: the marks show on the block
+   you are working in, and on nothing else. See code-fence.ts. */
+.markdown.ProseMirror-focused .code-fence.is-focused .code-fence-line,
+.markdown .code-fence.is-editing .code-fence-line {
+  pointer-events: auto;
+}
+
+.markdown.ProseMirror-focused
+  .code-fence.is-focused
+  :is(.code-fence-ticks, .code-fence-field),
+.markdown .code-fence.is-editing :is(.code-fence-ticks, .code-fence-field) {
+  opacity: 1;
+}
+
+/* The field and its menu share a positioning context. Nothing above clips,
+   so the menu can hang past the block. */
+.markdown .code-fence-field {
+  position: relative;
+  display: inline-flex;
+}
+
+/* An <input>, so typing a language never mutates the editor's DOM — and the
+   node view sizes it in `ch`, so it takes exactly the room its text needs. */
+.markdown .code-fence-lang {
+  font: inherit;
+  color: var(--md-ink-muted);
+  background: none;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
+  outline: none;
+  box-shadow: none;
+}
+
+.markdown .code-fence-lang::placeholder {
+  color: var(--md-ink-faint);
+  opacity: 1;
+}
+
+/* The name behind the info string, and the one part of the fence line that is
+   always on: a block says what language it is without being clicked into. A
+   fence reading `ts` says TypeScript here; an unknown one says nothing, which
+   is the tell that it won't highlight. */
+.markdown .code-fence-name {
+  margin-inline-start: auto;
+  padding-inline-start: 1em;
+  font-family: var(--md-font-body);
+  font-size: 0.85em;
+  color: var(--md-ink-faint);
+}
+
+.markdown .code-fence-suggest {
+  position: absolute;
+  z-index: 10;
+  inset-inline-start: 0;
+  top: calc(100% + 0.5em);
+  min-width: 16em;
+  max-height: 15em;
+  overflow-y: auto;
+  padding: 0.25em;
+  border: 1px solid var(--md-rule-strong);
+  border-radius: var(--md-code-radius);
+  background: var(--md-surface-soft);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+}
+
+.markdown .code-fence-suggestion {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1em;
+  padding: 0.15em 0.5em;
+  border-radius: 4px;
+  color: var(--md-ink-soft);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.markdown .code-fence-suggestion.is-active {
+  background: color-mix(in srgb, var(--md-accent) 14%, transparent);
+  color: var(--md-ink);
+}
+
+.markdown .code-fence-suggestion-name {
+  font-family: var(--md-font-body);
+  font-size: 0.9em;
+  color: var(--md-ink-muted);
+}
+
+.markdown .ProseMirror-gapcursor::after {
+  border-top-color: var(--md-accent);
+}
+
+/*
+ * TipTap adds a colgroup and an inline min-width to the table it draws, and
+ * the site has neither. Neutralise both so one table lays out the same in the
+ * editor and on the page.
+ */
+.markdown.ProseMirror table {
+  min-width: 0 !important;
+}
+
+.markdown.ProseMirror table > colgroup {
+  display: none;
+}
+
+/* Selected cells, while dragging across a table. */
+.markdown .selectedCell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--md-accent) 14%, transparent);
+  pointer-events: none;
+}
+
+.markdown .selectedCell {
+  position: relative;
+}
+
+/* -------------------------------------------------------------- rhythm -- */
+
+/*
+ * Gaps, resolved last so these win every specificity tie.
+ *
+ * A heading or a rule owns the space around it outright: a body block next to
+ * one drops its own margin, so nothing collapses against it and each token
+ * above is the exact gap that renders. Without this a heading could never sit
+ * closer than a paragraph, because collapsing takes the larger of the two.
+ *
+ * Two tight blocks in a row — stacked headings, a heading against a rule —
+ * are excluded from both rules, so they keep their own margins and collapse
+ * to one gap instead of touching.
+ */
+.markdown :is(h1, h2, h3, h4, h5, h6, hr) + :not(h1, h2, h3, h4, h5, h6, hr) {
+  margin-block-start: 0;
+}
+
+.markdown :not(h1, h2, h3, h4, h5, h6, hr):has(+ :is(h1, h2, h3, h4, h5, h6, hr)) {
+  margin-block-end: 0;
+}
+
+/* -------------------------------------------------------------- narrow -- */
+
+@media (max-width: 40rem) {
+  :root { --md-font-size: 1rem; }
+
+  .markdown pre {
+    margin-inline: -1rem;
+    border-inline: 0;
+    border-radius: 0;
+    padding-inline: 1rem;
+  }
+
+  /* The wrapper carries the frame in the editor, so it bleeds instead. The
+     <pre> inside keeps the padding it picks up above. */
+  .markdown .code-fence {
+    margin-inline: -1rem;
+    border-inline: 0;
+    border-radius: 0;
+  }
+
+  .markdown .code-fence-line {
+    padding-inline: 1rem;
+  }
+}
